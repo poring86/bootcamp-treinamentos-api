@@ -17,8 +17,12 @@ export default defineConfig([
   {
     plugins: { "simple-import-sort": simpleImportSort },
     rules: {
+      "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+      "no-unused-vars": "off", // Desliga a regra do JS puro para não duplicar
+
+      // Ordenação de imports
       "simple-import-sort/imports": "error",
-      "simple-import-sort/exports": "error"
+      "simple-import-sort/exports": "error",
     }
   }
 ]);
