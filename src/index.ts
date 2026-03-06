@@ -1,6 +1,9 @@
 import "dotenv/config";
+
+import fastifySwagger from '@fastify/swagger';
+import fastifySwaggerUI from '@fastify/swagger-ui';
 import Fastify from "fastify";
-import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "fastify-type-provider-zod";
+import { jsonSchemaTransform, serializerCompiler, validatorCompiler, ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
 
 const app = Fastify({
@@ -10,12 +13,30 @@ const app = Fastify({
 app.setValidatorCompiler(validatorCompiler)
 app.setSerializerCompiler(serializerCompiler)
 
-app.get("/", async (request, reply) => {
-    return { hello: "world" };
-});
+await app.register(fastifySwagger, {
+   openApi: {
+    info: {
+        title: "Bootcamp Treinamentos API",
+        description: "API de treinamentos",
+        version: "1.0.0"
+    }
+   },
+   servers: [
+    {
+         description: "Local",
+        url: "http://localhost:8081",
+       
+    }
+   ]
+})
+
+await app.register(fastifySwaggerUI, {
+    routePrefix: '/docs'
+})
 
 app.withTypeProvider<ZodTypeProvider>().route({
     method: "GET",
+    url: "/",
     schema: {
         description: "Hello world",
         tags: ["hello"],
@@ -23,11 +44,10 @@ app.withTypeProvider<ZodTypeProvider>().route({
             200: z.object({
                 message: z.string()
             })
-        }
+        },
+        servers: []
     },
-    handler: async () => {
-        return { message: 'Hellow World' }
-    }
+    transform: jsonSchemaTransform
 })
 
 try{
