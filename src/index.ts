@@ -1,6 +1,7 @@
 import "dotenv/config";
 
 import fastifyCors from "@fastify/cors";
+import fastifyStatic from "@fastify/static";
 import fastifySwagger from "@fastify/swagger";
 import fastifyApiReference from "@scalar/fastify-api-reference";
 import Fastify from "fastify";
@@ -10,7 +11,12 @@ import {
   validatorCompiler,
   ZodTypeProvider,
 } from "fastify-type-provider-zod";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import z from "zod";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 import { auth } from "./lib/auth.js";
 import { aiRoutes } from "./routes/ai.js";
@@ -64,6 +70,11 @@ await app.register(fastifyApiReference, {
       },
     ],
   },
+});
+
+await app.register(fastifyStatic, {
+  root: path.join(__dirname, "../public"),
+  prefix: "/public/",
 });
 
 // RESTful
@@ -143,7 +154,10 @@ app.route({
 });
 
 try {
-  await app.listen({ port: Number(process.env.PORT) || 8081 });
+  await app.listen({ 
+    port: Number(process.env.PORT) || 8081,
+    host: "0.0.0.0" 
+  });
 } catch (err) {
   app.log.error(err);
   process.exit(1);
