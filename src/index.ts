@@ -1,7 +1,6 @@
 import "dotenv/config";
 
 import fastifyCors from "@fastify/cors";
-import fastifyStatic from "@fastify/static";
 import fastifySwagger from "@fastify/swagger";
 import fastifyApiReference from "@scalar/fastify-api-reference";
 import Fastify from "fastify";
@@ -11,22 +10,32 @@ import {
   validatorCompiler,
   ZodTypeProvider,
 } from "fastify-type-provider-zod";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import z from "zod";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 import { auth } from "./lib/auth.js";
+import { env } from "./lib/env.js";
 import { aiRoutes } from "./routes/ai.js";
 import { homeRoutes } from "./routes/home.js";
 import { meRoutes } from "./routes/me.js";
 import { statsRoutes } from "./routes/stats.js";
 import { workoutPlanRoutes } from "./routes/workout-plan.js";
 
+const envToLogger = {
+  development: {
+    transport: {
+      target: "pino-pretty",
+      options: {
+        translateTime: "HH:MM:ss Z",
+        ignore: "pid,hostname",
+      },
+    },
+  },
+  production: true,
+  test: false,
+};
+
 const app = Fastify({
-  logger: true,
+  logger: envToLogger[env.NODE_ENV],
 });
 
 app.setValidatorCompiler(validatorCompiler);
@@ -41,8 +50,8 @@ await app.register(fastifySwagger, {
     },
     servers: [
       {
-        description: "Localhost",
-        url: "http://localhost:8080",
+        description: "API Base URL",
+        url: env.API_BASE_URL,
       },
     ],
   },
@@ -50,7 +59,7 @@ await app.register(fastifySwagger, {
 });
 
 await app.register(fastifyCors, {
-  origin: ["http://localhost:3000"],
+  origin: [env.WEB_APP_BASE_URL],
   credentials: true,
 });
 
@@ -70,11 +79,6 @@ await app.register(fastifyApiReference, {
       },
     ],
   },
-});
-
-await app.register(fastifyStatic, {
-  root: path.join(__dirname, "../public"),
-  prefix: "/public/",
 });
 
 // RESTful
@@ -154,10 +158,7 @@ app.route({
 });
 
 try {
-  await app.listen({ 
-    port: Number(process.env.PORT) || 8081,
-    host: "0.0.0.0" 
-  });
+  await app.listen({ port: env.PORT });
 } catch (err) {
   app.log.error(err);
   process.exit(1);
