@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@ai-sdk/google':
+        specifier: 3.0.34
+        version: 3.0.34(zod@4.3.6)
       '@ai-sdk/openai':
         specifier: 3.0.33
         version: 3.0.33(zod@4.3.6)

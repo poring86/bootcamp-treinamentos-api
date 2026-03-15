@@ -30,6 +30,7 @@
     "typescript-eslint": "^8.56.0"
   },
   "dependencies": {
+    "@ai-sdk/google": "3.0.34",
     "@ai-sdk/openai": "3.0.33",
     "@fastify/cors": "11.2.0",
     "@fastify/static": "^9.0.0",
