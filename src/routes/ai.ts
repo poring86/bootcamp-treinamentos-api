@@ -1,10 +1,9 @@
 import { groq } from "@ai-sdk/groq";
 import {
   convertToModelMessages,
-  stepCountIs,
   streamText,
   tool,
-  UIMessage,
+  UIMessage
 } from "ai";
 import { fromNodeHeaders } from "better-auth/node";
 import { FastifyInstance } from "fastify";
@@ -22,58 +21,29 @@ import { UpsertUserTrainData } from "../usecases/UpsertUserTrainData.js";
 const SYSTEM_PROMPT = `Você é um personal trainer virtual especialista em montagem de planos de treino personalizados.
 
 ## Personalidade
-- Tom amigável, motivador e acolhedor.
-- Linguagem simples e direta, sem jargões técnicos. Seu público principal são pessoas leigas em musculação.
+- Tom amigável e motivador. Linguagem humana e calorosa.
 - Respostas curtas e objetivas.
 
-## Regras de Interação
+## Regras de Interação (ESTRITAMENTE OBRIGATÓRIAS)
 
-1. **SEMPRE** chame a tool \`getUserTrainData\` antes de qualquer interação com o usuário. Isso é obrigatório.
-2. Se o usuário **não tem dados cadastrados** (retornou null):
-   - Pergunte nome, peso (kg), altura (cm), idade e % de gordura corporal (inteiro de 0 a 100, onde 100 = 100%).
-   - Faça perguntas simples e diretas, tudo em uma única mensagem.
-   - Após receber os dados, salve com a tool \`updateUserTrainData\`. **IMPORTANTE**: converta o peso de kg para gramas (multiplique por 1000) antes de salvar.
-3. Se o usuário **já tem dados cadastrados**: cumprimente-o pelo nome de forma amigável.
+1. **SILÊNCIO TÉCNICO TOTAL**: **NUNCA** gere textos contendo: "<function=", "{}", "JSON", "getUserTrainData", "createWorkoutPlan", ou qualquer sintaxe que pareça código. 
+2. **CONFIRMAÇÃO EM TEXTO**: Após chamar QUALQUER ferramenta, você **DEVE** enviar uma mensagem de texto confirmando o que foi feito (ex: "Perfil salvo!", "Seu treino está pronto!"). NUNCA termine sua resposta apenas com o resultado da ferramenta.
+3. **AÇÃO INVISÍVEL**: Utilize a ferramenta e use o resultado para guiar a conversa. NÃO repita os dados brutos para o usuário.
+4. **VERSATILIDADE**: Você **DEVE** responder a dúvidas sobre exercícios, dicas de treino ou nutrição a qualquer momento, mesmo durante o onboarding. Seja prestativo!
+5. **SEQUÊNCIA OBRIGATÓRIA**:
+   - Passo 1: Chamar \`getUserTrainData\`.
+   - Passo 2: Se o resultado for \`null\`, você **DEVE** coletar (nome, peso, altura, idade, % gordura) e **OBRIGATORIAMENTE** chamar \`updateUserTrainData\` antes de qualquer outra coisa. Você não pode prosseguir para a criação do treino sem que esta ferramenta retorne sucesso.
+   - Passo 3: Após o perfil estar salvo, pergunte o objetivo e dias da semana.
+   - Passo 4: Chamada final para \`createWorkoutPlan\`.
+   
+Note: Se o usuário fizer uma pergunta aleatória no meio do processo, responda-a com educação e depois use um gancho para voltar ao passo em que pararam (ex: "Respondendo sua dúvida..., agora voltando ao seu plano, qual seu objetivo?").
 
-## Criação de Plano de Treino
+## Criação de Plano de Treino (createWorkoutPlan)
 
-Quando o usuário quiser criar um plano de treino:
-- Pergunte o objetivo, quantos dias por semana ele pode treinar e se tem restrições físicas ou lesões.
-- Poucas perguntas, simples e diretas.
-- O plano DEVE ter exatamente 7 dias (MONDAY a SUNDAY).
-- Dias sem treino devem ter: \`isRest: true\`, \`exercises: []\`, \`estimatedDurationInSeconds: 0\`.
-- Chame a tool \`createWorkoutPlan\` para salvar o plano.
-
-### Divisões de Treino (Splits)
-
-Escolha a divisão adequada com base nos dias disponíveis:
-- **2-3 dias/semana**: Full Body ou ABC (A: Peito+Tríceps, B: Costas+Bíceps, C: Pernas+Ombros)
-- **4 dias/semana**: Upper/Lower (recomendado, cada grupo 2x/semana) ou ABCD (A: Peito+Tríceps, B: Costas+Bíceps, C: Pernas, D: Ombros+Abdômen)
-- **5 dias/semana**: PPLUL — Push/Pull/Legs + Upper/Lower (superior 3x, inferior 2x/semana)
-- **6 dias/semana**: PPL 2x — Push/Pull/Legs repetido
-
-### Princípios Gerais de Montagem
-- Músculos sinérgicos juntos (peito+tríceps, costas+bíceps)
-- Exercícios compostos primeiro, isoladores depois
-- 4 a 8 exercícios por sessão
-- 3-4 séries por exercício. 8-12 reps (hipertrofia), 4-6 reps (força)
-- Descanso entre séries: 60-90s (hipertrofia), 2-3min (compostos pesados)
-- Evitar treinar o mesmo grupo muscular em dias consecutivos
-- Nomes descritivos para cada dia (ex: "Superior A - Peito e Costas", "Descanso")
-
-### Imagens de Capa (coverImageUrl)
-
-SEMPRE forneça um \`coverImageUrl\` para cada dia de treino. Escolha com base no foco muscular:
-
-**Dias majoritariamente superiores** (peito, costas, ombros, bíceps, tríceps, push, pull, upper, full body):
-- https://gw8hy3fdcv.ufs.sh/f/ccoBDpLoAPCO3y8pQ6GBg8iqe9pP2JrHjwd1nfKtVSQskI0v
-- https://gw8hy3fdcv.ufs.sh/f/ccoBDpLoAPCOW3fJmqZe4yoUcwvRPQa8kmFprzNiC30hqftL
-
-**Dias majoritariamente inferiores** (pernas, glúteos, quadríceps, posterior, panturrilha, legs, lower):
-- https://gw8hy3fdcv.ufs.sh/f/ccoBDpLoAPCOgCHaUgNGronCvXmSzAMs1N3KgLdE5yHT6Ykj
-- https://gw8hy3fdcv.ufs.sh/f/ccoBDpLoAPCO85RVu3morROwZk5NPhs1jzH7X8TyEvLUCGxY
-
-Alterne entre as duas opções de cada categoria para variar. Dias de descanso usam imagem de superior.`;
+- O plano deve ter 7 dias (MONDAY a SUNDAY).
+- Use as imagens de capa:
+  Superior: https://gw8hy3fdcv.ufs.sh/f/ccoBDpLoAPCO3y8pQ6GBg8iqe9pP2JrHjwd1nfKtVSQskI0v
+  Inferior: https://gw8hy3fdcv.ufs.sh/f/ccoBDpLoAPCOgCHaUgNGronCvXmSzAMs1N3KgLdE5yHT6Ykj`;
 
 export const aiRoutes = async (app: FastifyInstance) => {
   app.withTypeProvider<ZodTypeProvider>().route({
@@ -101,15 +71,34 @@ export const aiRoutes = async (app: FastifyInstance) => {
         model: groq("llama-3.1-8b-instant"),
         system: SYSTEM_PROMPT,
         messages: convertedMessages,
-        stopWhen: stepCountIs(10),
+        maxSteps: 20,
+        onError: (error: any) => {
+          console.error("AI Stream Error for user", userId, error);
+        },
+        onStepFinish: ({
+          toolCalls,
+          toolResults,
+        }: {
+          toolCalls: any[];
+          toolResults: any[];
+        }) => {
+          console.log("AI Step Finish", {
+            userId,
+            toolCalls: toolCalls?.map((tc: any) => tc.toolName),
+            toolResults: toolResults?.map((tr: any) => tr.toolName),
+          });
+        },
         tools: {
           getUserTrainData: tool({
             description:
               "Busca os dados de treino do usuário autenticado (peso, altura, idade, % gordura). Retorna null se não houver dados cadastrados.",
             inputSchema: z.preprocess((val) => val ?? {}, z.object({})),
             execute: async () => {
+              console.log("Executing getUserTrainData for user", userId);
               const getUserTrainData = new GetUserTrainData();
-              return getUserTrainData.execute({ userId });
+              const res = await getUserTrainData.execute({ userId });
+              console.log("getUserTrainData Result:", !!res);
+              return res;
             },
           }),
           updateUserTrainData: tool({
@@ -134,8 +123,11 @@ export const aiRoutes = async (app: FastifyInstance) => {
               })
             ),
             execute: async (params) => {
+              console.log("Executing updateUserTrainData", { userId, params });
               const upsertUserTrainData = new UpsertUserTrainData();
-              return upsertUserTrainData.execute({ userId, ...params });
+              const res = await upsertUserTrainData.execute({ userId, ...params });
+              console.log("updateUserTrainData Success");
+              return res;
             },
           }),
           getWorkoutPlans: tool({
@@ -204,12 +196,17 @@ export const aiRoutes = async (app: FastifyInstance) => {
               })
             ),
             execute: async (input) => {
+              console.log("Executing createWorkoutPlan for user", userId, {
+                planName: input.name,
+              });
               const createWorkoutPlan = new CreateWorkoutPlan();
-              return createWorkoutPlan.execute({
+              const result = await createWorkoutPlan.execute({
                 userId,
                 name: input.name,
                 workoutDays: input.workoutDays,
               });
+              console.log("Workout plan created successfully:", result.id);
+              return result;
             },
           }),
         },
