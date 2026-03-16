@@ -1,10 +1,10 @@
-import { openai } from "@ai-sdk/openai";
+import { groq } from "@ai-sdk/groq";
 import {
-    convertToModelMessages,
-    stepCountIs,
-    streamText,
-    tool,
-    UIMessage,
+  convertToModelMessages,
+  stepCountIs,
+  streamText,
+  tool,
+  UIMessage,
 } from "ai";
 import { fromNodeHeaders } from "better-auth/node";
 import { FastifyInstance } from "fastify";
@@ -95,7 +95,7 @@ export const aiRoutes = async (app: FastifyInstance) => {
       const { messages } = request.body as { messages: UIMessage[] };
 
       const result = streamText({
-        model: openai("gpt-4o-mini"),
+        model: groq("llama-3.3-70b-versatile"),
         system: SYSTEM_PROMPT,
         messages: await convertToModelMessages(messages),
         stopWhen: stepCountIs(10),
