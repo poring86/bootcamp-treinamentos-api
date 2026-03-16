@@ -5,10 +5,10 @@ import fastifySwagger from "@fastify/swagger";
 import fastifyApiReference from "@scalar/fastify-api-reference";
 import Fastify from "fastify";
 import {
-  jsonSchemaTransform,
-  serializerCompiler,
-  validatorCompiler,
-  ZodTypeProvider,
+    jsonSchemaTransform,
+    serializerCompiler,
+    validatorCompiler,
+    ZodTypeProvider,
 } from "fastify-type-provider-zod";
 import z from "zod";
 
@@ -158,7 +158,7 @@ app.route({
 });
 
 try {
-  await app.listen({ port: env.PORT });
+  await app.listen({ port: env.PORT, host: "0.0.0.0" });
 } catch (err) {
   app.log.error(err);
   process.exit(1);
